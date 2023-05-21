@@ -177,8 +177,14 @@ int find_cluster(cluster **clusters, Data vector) {
 
 void add_to_cluster(cluster **clusters, int *cluster_members_counter_copy, int index, Data vector) {
     int i;
+    Data vector_copy = (Data) malloc(vector_size * sizeof(double)); // allocate memory for vector_copy
+    if (vector_copy == NULL) {
+        printf("\nAn Error Has Occurred\n");
+        exit(0);
+    }
     for (i = 0; i < vector_size; i++) {
-        clusters[index]->members[(cluster_members_counter_copy[index] - 1) * vector_size + i] = vector[i];
+        vector_copy[i] = vector[i]; // copy vector values to vector_copy
+        clusters[index]->members[(cluster_members_counter_copy[index] - 1) * vector_size + i] = vector_copy[i];
     }
     cluster_members_counter_copy[index]--;
 }
@@ -289,7 +295,6 @@ int main(int argc, char *argv[]) {
             add_to_cluster(clusters, cluster_members_counter_copy, index, matrix[i]);
         }
         free(cluster_members_counter_copy);
-        Data old_centroid;
         for (i = 0; i < K; i++) {
             Data new_centroid = calc_centroid(clusters, cluster_members_counter, i);
             if (valid) {
@@ -313,14 +318,10 @@ int main(int argc, char *argv[]) {
         }
         printf("\n");
     }
-
     for (i = 0; i < K; i++) {
         free(clusters[i]);
     }
     free(clusters);
-
-    /*for (i = 0; i < N; i++) {
-        free(matrix[i]);
-    }
-    free(matrix); */
+    free(matrix[0]);
+    free(matrix);
 }

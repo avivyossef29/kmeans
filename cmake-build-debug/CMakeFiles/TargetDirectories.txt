@@ -1,0 +1,3 @@
+/Users/benshushan/Desktop/TAU/SoftwareProject/kmeans/cmake-build-debug/CMakeFiles/ClionProject.dir
+/Users/benshushan/Desktop/TAU/SoftwareProject/kmeans/cmake-build-debug/CMakeFiles/edit_cache.dir
+/Users/benshushan/Desktop/TAU/SoftwareProject/kmeans/cmake-build-debug/CMakeFiles/rebuild_cache.dir

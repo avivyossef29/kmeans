@@ -2,10 +2,11 @@
 #include <stdio.h>
 #include <math.h>
 
-typedef double *Data; // Data is an alias to a pointer to a double
 int N = 0, K = 0, iterations = 0;
 int vector_size = 0;
 double epsilon = 0.001;
+
+typedef double *Data; // Data is an alias to a pointer to a double
 
 struct linked_list {
     Data d;
@@ -16,34 +17,35 @@ typedef struct linked_list Element; // Element is an alias to a linked_list
 typedef Element *Link;              // Link is defined as a pointer to an Element
 
 Data calc_vector(const char *input_line, int line_size, int vector_size) {
-    Data d = (Data) malloc(sizeof(double) * vector_size);
-    if (d == NULL)
+    Data curr_vector = (Data) calloc(vector_size, sizeof(double));
+    if (curr_vector == NULL)
     {
         printf("\nAn Error Has Occurred\n");
         exit(0);
     }
-    int counter = 0, start = 0, i;
+    int vector_entrance_index = 0, start = 0, i;
+    char *vector_entrance = (char *) calloc(1, sizeof(char));
     for (i = 0; i < line_size; i++) {
         if (input_line[i] == ',' || input_line[i] == '\n') {
             size_t entrance_length = i - start;
-            char *vector_entrance = (char *) malloc(entrance_length + 1); // Add +1 for the null terminator
+            vector_entrance = (char *) realloc(vector_entrance, (entrance_length + 1) * sizeof(char)); // Add +1 for the null terminator
             if (vector_entrance == NULL)
             {
                 printf("\nAn Error Has Occurred\n");
                 exit(0);
             }
             int j;
-            for (j = 0; j < entrance_length; j++) {
+            for (j = 0; j < entrance_length; j++) { // copy the current vector entrance
                 vector_entrance[j] = input_line[start + j];
             }
-            vector_entrance[entrance_length] = '\0'; // Add the null terminator
-            d[counter] = atof(vector_entrance);
+            vector_entrance[entrance_length] = '\0'; // add the null terminator to the end of the vector entrance
+            curr_vector[vector_entrance_index] = atof(vector_entrance); // set the entrance of the vector
             start = i + 1;
-            free(vector_entrance);
-            counter++;
+            vector_entrance_index++;
         }
     }
-    return d;
+    free(vector_entrance);
+    return curr_vector;
 }
 
 int calc_vector_size(const char *input_line, int line_size) {
@@ -57,7 +59,7 @@ int calc_vector_size(const char *input_line, int line_size) {
 }
 
 Link initialize_linked_list(char *input_line, int vector_size, int line_size) {
-    Link head = (Link) malloc(sizeof(Element));
+    Link head = (Link) calloc(1, sizeof(Element));
     if (head == NULL)
     {
         printf("\nAn Error Has Occurred\n");
@@ -69,7 +71,7 @@ Link initialize_linked_list(char *input_line, int vector_size, int line_size) {
 }
 
 void link_next_line(Link curr_element, char *input_line, int vector_size, int line_size) {
-    Link next_element = (Link) malloc(sizeof(Element));
+    Link next_element = (Link) calloc(1, sizeof(Element));
     if (next_element == NULL)
     {
         printf("\nAn Error Has Occurred\n");
@@ -80,7 +82,7 @@ void link_next_line(Link curr_element, char *input_line, int vector_size, int li
     curr_element->next = next_element;
 }
 
-Data *list_to_matrix(Link head, int n, int vector_size) {
+Data *list_to_matrix(Link head, int n, int vector_size) { // n = the total number of vectors in the given input
     Data p;
     Data *a;
     int i;
@@ -92,13 +94,23 @@ Data *list_to_matrix(Link head, int n, int vector_size) {
     }
     for (i = 0; i < n; i++) {
         int j;
-        a[i] = p + i * vector_size;
+        a[i] = p + i * vector_size; // a[i] = the memory address of the first entrance of the i'th vector
         for (j = 0; j < vector_size; j++) {
             a[i][j] = head->d[j];
         }
         head = head->next;
     }
     return a;
+}
+
+void free_linked_list(Link head) {
+    Link tmp;
+    while (head != NULL) {
+        tmp = head;
+        head = head->next;
+        free(tmp->d);
+        free(tmp);
+    }
 }
 
 Data *handle_stream(const char *file_name) {
@@ -123,13 +135,14 @@ Data *handle_stream(const char *file_name) {
             curr_element = curr_element->next;
         }
         counter++;
-
         // Reset line_size to 0 for the next iteration
         line_size = 0;
     }
     free(input_line);
+    fclose(file);
     N = counter;
     Data *matrix = list_to_matrix(head, N, vector_size);
+    free_linked_list(head);
     return matrix;
 }
 
@@ -137,16 +150,6 @@ typedef struct cluster {
     Data centroid;
     Data members;
 } cluster;
-
-cluster **set_clusters(Data *matrix) {
-    cluster **clusters = (cluster **) malloc(K * sizeof(cluster *));
-    int i;
-    for (i = 0; i < K; i++) {
-        clusters[i] = (cluster *) malloc(sizeof(cluster)); // allocate memory for each cluster object in the clusters array
-        clusters[i]->centroid = matrix[i]; // writing the first k vectors as the clusters centroids
-    }
-    return clusters;
-}
 
 double distance(Data v1, Data v2) {
     double sum = 0;
@@ -159,9 +162,8 @@ double distance(Data v1, Data v2) {
 
 int find_cluster(cluster **clusters, Data vector) {
     int index = -1, i;
-    double min_distance =
-            pow(2, sizeof(double) * 8 - 2) * (1 - pow(2, -52)); // set min_distance to the max possible double value
     double curr_distance;
+    double min_distance = pow(2, sizeof(double) * 8 - 2) * (1 - pow(2, -52)); // set min_distance to the max possible double value
     Data curr_centroid;
     for (i = 0; i < K; i++) {
         curr_centroid = clusters[i]->centroid;
@@ -179,8 +181,8 @@ void add_to_cluster(cluster **clusters, int *cluster_members_counter_copy, int i
     for (i = 0; i < vector_size; i++) {
         clusters[index]->members[(cluster_members_counter_copy[index] - 1) * vector_size + i] = vector[i];
     }
-    cluster_members_counter_copy[index]--; // decrease the cluster's members count. Why? because
-    // essentially we use cluster_members_counter twice:
+    cluster_members_counter_copy[index]--;
+    // decrease the cluster's members count. Why? because essentially we use cluster_members_counter twice:
     // 1. to calculate how much space to allocate for each cluster members
     // 2. to keep track of where to paste each vector in members array
     // (we paste the vectors in reversed order - from the last position to the
@@ -198,48 +200,28 @@ void add_to_cluster(cluster **clusters, int *cluster_members_counter_copy, int i
      // debug section start */
 }
 
-int *initialize_cluster_members_counter() {
-    int i;
-    int *cluster_members_counter = (int *) malloc(K * sizeof(int));
-    if (cluster_members_counter == NULL) {
-        printf("failed to allocate memory for cluster_members_counter");
-    }
-    for (i = 0; i < K; i++) {
-        cluster_members_counter[i] = 0;
-    }
-    return cluster_members_counter;
-}
-
-void set_cluster_members_counter(cluster **clusters, Data *matrix, int *cluster_members_counter) {
+void set_cluster_members_counters(cluster **clusters, Data *matrix, int *cluster_members_counter, int* cluster_members_counter_copy) {
     int i, index;
     for (i = 0; i < N; i++) // go over each vector in the matrix
     {
         index = find_cluster(clusters, matrix[i]);
         cluster_members_counter[index]++;
+        cluster_members_counter_copy[index]++;
     }
 }
 
 void allocate_memory_for_cluster_members(cluster **clusters, int *cluster_members_counter) {
     int i;
     for (i = 0; i < K; i++) {
-        size_t members_num = vector_size * sizeof(double) * cluster_members_counter[i];
-        clusters[i]->members = (Data) malloc(members_num);
-        //debug section start
+        clusters[i]->members = (Data) calloc(vector_size * cluster_members_counter[i], sizeof(double));
+
+        /*/debug section start
         int j;
         for (j = 0; j < (vector_size * cluster_members_counter[i]); j++) {
             clusters[i]->members[j] = 0.0;
         }
-        //debug section end
+        //debug section end */
     }
-}
-
-int *copy_array(int *arr, int arr_length) {
-    int i;
-    int *copy = (int *) malloc(arr_length * sizeof(int));
-    for (i = 0; i < arr_length; i++) {
-        copy[i] = arr[i];
-    }
-    return copy;
 }
 
 void add_vectors(Data v1, Data v2) {
@@ -250,17 +232,13 @@ void add_vectors(Data v1, Data v2) {
 }
 
 Data calc_centroid(cluster **clusters, const int *cluster_members_counter, int index) {
-    Data sum = (Data) malloc(vector_size * sizeof(double)); // allocate memory for the vector 'sum'
-    int i;
-    for (i = 0; i < vector_size; i++) // initialize 'sum' as the zero vector
-    {
-        sum[i] = 0;
-    }
+    Data sum = (Data) calloc(vector_size, sizeof(double)); // initialize 'sum' as the zero vector
     int num_of_members = cluster_members_counter[index];
-    if (num_of_members == 0) // if the cluster has no members then the centroid stays the same
+    if (num_of_members == 0) // if the cluster is empty then its centroid is not changed
     {
         return clusters[index]->centroid;
     }
+    int i;
     for (i = 0; i < num_of_members; i++) // sum all the members in the cluster
     {
         add_vectors(sum, clusters[index]->members + i * vector_size);
@@ -270,8 +248,6 @@ Data calc_centroid(cluster **clusters, const int *cluster_members_counter, int i
         sum[i] = sum[i] / num_of_members;
     }
     return sum;
-
-
 }
 
 int main(int argc, char *argv[]) {
@@ -293,12 +269,19 @@ int main(int argc, char *argv[]) {
     if (K <= 1 || K >= N) {
         printf("Invalid number of clusters!\n");
     }
-    int valid = 0;
-    cluster **clusters = set_clusters(matrix); // initialize an array with K pointers to clusters
-    // and set the first K vectors in matrix the centroids
+    int valid = 0, i;
 
-    // debug section start
-    printf("the first K centroids are:\n");
+    // allocate memory for 'clusters' to be an array of K pointers to objects of type cluster
+    cluster **clusters = (cluster **) calloc(K, sizeof(cluster *));
+    for (i = 0; i < K; i++) {
+        clusters[i] = (cluster *) calloc(1, sizeof(cluster)); // allocate memory for each cluster object in the clusters array
+        clusters[i]->centroid = matrix[i]; // writing the first k vectors as the clusters centroids
+    }
+
+    /*set_clusters(matrix, clusters);*/
+
+    /*/ debug section start
+    printf("the first %d centroids are:\n", K);
     int i;
     for (i = 0; i < K; i++) // for every cluster
     {
@@ -308,30 +291,35 @@ int main(int argc, char *argv[]) {
         }
         printf("\n");
     }
-    // debug section end
+    // debug section end */
 
     while (iterations > 0 && !valid) // line 67 on python file
     {
         valid = 1;
         int i, index;
-        int *cluster_members_counter;
-        cluster_members_counter = initialize_cluster_members_counter();
+        int *cluster_members_counter = (int *) calloc(K, sizeof(int)); // allocate memory for the c_m_c array
+        int *cluster_members_counter_copy = (int *) calloc(K, sizeof(int)); // allocate memory for the c_m_c_c array
+        if (cluster_members_counter == NULL || cluster_members_counter_copy == NULL)
+        {
+            printf("\nAn Error Has Occurred\n");
+            exit(0);
+        }
 
-        // debug section start
+        /*/ debug section start
         for (i = 0; i < K; i++) {
             printf("%d\t", cluster_members_counter[i]); // 0       0       0
         }
         printf("\n");
-        //debug section end
+        //debug section end */
 
-        set_cluster_members_counter(clusters, matrix, cluster_members_counter);
+        set_cluster_members_counters(clusters, matrix, cluster_members_counter, cluster_members_counter_copy);
 
-        // debug section start
+        /*/ debug section start
         for (i = 0; i < K; i++) {
             printf("%d\t", cluster_members_counter[i]); // 438     219     143
         }
         printf("\n");
-        //debug section end
+        //debug section end */
 
         allocate_memory_for_cluster_members(clusters, cluster_members_counter);
 
@@ -348,8 +336,7 @@ int main(int argc, char *argv[]) {
         printf("\n");
         //debug section end */
 
-        int *cluster_members_counter_copy;
-        cluster_members_counter_copy = copy_array(cluster_members_counter, vector_size);
+
 
         /*/ debug section start
         for (i = 0; i < K; i++) {
@@ -399,6 +386,7 @@ int main(int argc, char *argv[]) {
             clusters[i]->centroid = new_centroid;
             free(clusters[i]->members);
         }
+        free(cluster_members_counter);
         iterations--;
     }
     //int i;

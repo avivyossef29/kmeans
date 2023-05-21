@@ -135,8 +135,7 @@ Data *handle_stream(const char *file_name) {
             curr_element = curr_element->next;
         }
         counter++;
-        // Reset line_size to 0 for the next iteration
-        line_size = 0;
+        line_size = 0; // Reset line_size to 0 for the next iteration
     }
     free(input_line);
     fclose(file);
@@ -187,17 +186,6 @@ void add_to_cluster(cluster **clusters, int *cluster_members_counter_copy, int i
     // 2. to keep track of where to paste each vector in members array
     // (we paste the vectors in reversed order - from the last position to the
     // first position)
-
-    /*/ debug section start
-    printf("\n");
-    for (i = 0; i < K; i++) {
-        if (cluster_members_counter_copy[2] == 1) {
-            continue;
-        }
-        printf("%d\t", cluster_members_counter_copy[i]);
-    }
-    printf("\n");
-     // debug section start */
 }
 
 void set_cluster_members_counters(cluster **clusters, Data *matrix, int *cluster_members_counter, int* cluster_members_counter_copy) {
@@ -214,13 +202,6 @@ void allocate_memory_for_cluster_members(cluster **clusters, int *cluster_member
     int i;
     for (i = 0; i < K; i++) {
         clusters[i]->members = (Data) calloc(vector_size * cluster_members_counter[i], sizeof(double));
-
-        /*/debug section start
-        int j;
-        for (j = 0; j < (vector_size * cluster_members_counter[i]); j++) {
-            clusters[i]->members[j] = 0.0;
-        }
-        //debug section end */
     }
 }
 
@@ -278,21 +259,6 @@ int main(int argc, char *argv[]) {
         clusters[i]->centroid = matrix[i]; // writing the first k vectors as the clusters centroids
     }
 
-    /*set_clusters(matrix, clusters);*/
-
-    /*/ debug section start
-    printf("the first %d centroids are:\n", K);
-    int i;
-    for (i = 0; i < K; i++) // for every cluster
-    {
-        int j;
-        for (j = 0; j < vector_size; j++) {
-            printf("%f\t", clusters[i]->centroid[j]);
-        }
-        printf("\n");
-    }
-    // debug section end */
-
     while (iterations > 0 && !valid) // line 67 on python file
     {
         valid = 1;
@@ -304,77 +270,14 @@ int main(int argc, char *argv[]) {
             printf("\nAn Error Has Occurred\n");
             exit(0);
         }
-
-        /*/ debug section start
-        for (i = 0; i < K; i++) {
-            printf("%d\t", cluster_members_counter[i]); // 0       0       0
-        }
-        printf("\n");
-        //debug section end */
-
         set_cluster_members_counters(clusters, matrix, cluster_members_counter, cluster_members_counter_copy);
-
-        /*/ debug section start
-        for (i = 0; i < K; i++) {
-            printf("%d\t", cluster_members_counter[i]); // 438     219     143
-        }
-        printf("\n");
-        //debug section end */
-
         allocate_memory_for_cluster_members(clusters, cluster_members_counter);
-
-        /*/debug section start
-        for (i = 0; i < K; i++) {
-            int j;
-            for (j = 0; j < vector_size * cluster_members_counter[i]; j++) {
-                if ((j % vector_size) == 0) {
-                    printf("\n");
-                }
-                printf("%f\t", clusters[i]->members[j]); // 0.000000        0.000000        0.000000
-            }
-        }
-        printf("\n");
-        //debug section end */
-
-
-
-        /*/ debug section start
-        for (i = 0; i < K; i++) {
-            printf("%d\t", cluster_members_counter_copy[i]); // 438     219     143
-        }
-        printf("\n");
-        //debug section end */
-
         for (i = 0; i < N; i++) // for each vector given in input
         {
             index = find_cluster(clusters, matrix[i]); // find the vector's cluster
-
-            /*/ debug section start
-            printf("%d\n", index);
-            //debug section end */
-
-            // add the vector in the i'th row to its cluster
             add_to_cluster(clusters, cluster_members_counter_copy, index, matrix[i]);
         }
         free(cluster_members_counter_copy);
-
-        /*debug section start
-        for (i = 0; i < K; i++) {
-            printf("######################################\n");
-            printf("###    this is cluster number %d    ###\n", i);
-            printf("######################################\n");
-            int j;
-            for (j = 0; j < vector_size * cluster_members_counter[i]; j++) {
-                if ((j % vector_size) == 0) {
-                    printf("\n");
-                }
-                printf("%f\t", clusters[i]->members[j]); // 0.000000        0.000000        0.000000
-            }
-            printf("\n\n");
-        }
-        printf("\n");
-        //debug section end */
-
         for (i = 0; i < K; i++) {
             Data new_centroid = calc_centroid(clusters, cluster_members_counter, i);
             if (valid) {

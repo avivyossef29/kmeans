@@ -87,7 +87,7 @@ Data *list_to_matrix(Link head, int n, int vector_size) { // n = the total numbe
     Data *a;
     int i;
     p = (Data) calloc(n * vector_size, sizeof(double)); // initialize a one dimensional array of size n * vector_size
-    a = (Data *) calloc(n, sizeof(double *));           // initialize an array that represents the rows of the matrix
+    a = (Data *) calloc(n, sizeof(Data));               // initialize an array that represents the rows of the matrix
     if (a == NULL || p == NULL) {
         printf("\nAn Error Has Occurred\n");
         exit(0);
@@ -181,12 +181,13 @@ void add_to_cluster(cluster **clusters, int *cluster_members_counter_copy, int i
         clusters[index]->members[(cluster_members_counter_copy[index] - 1) * vector_size + i] = vector[i];
     }
     cluster_members_counter_copy[index]--;
+}
+
     // decrease the cluster's members count. Why? because essentially we use cluster_members_counter twice:
     // 1. to calculate how much space to allocate for each cluster members
     // 2. to keep track of where to paste each vector in members array
     // (we paste the vectors in reversed order - from the last position to the
     // first position)
-}
 
 void set_cluster_members_counters(cluster **clusters, Data *matrix, int *cluster_members_counter, int* cluster_members_counter_copy) {
     int i, index;
@@ -256,11 +257,21 @@ int main(int argc, char *argv[]) {
     cluster **clusters = (cluster **) calloc(K, sizeof(cluster *));
     for (i = 0; i < K; i++) {
         clusters[i] = (cluster *) calloc(1, sizeof(cluster)); // allocate memory for each cluster object in the clusters array
-        clusters[i]->centroid = matrix[i]; // writing the first k vectors as the clusters centroids
+        clusters[i]->centroid = (double*) calloc(vector_size, sizeof(double)); // allocate memory for each centroid
+        int j;
+        for (j = 0; j < vector_size; j++) {
+            clusters[i]->centroid[j] = matrix[i][j]; // copy the first k vectors from matrix to be the centroids
+        }
     }
-
-    while (iterations > 0 && !valid) // line 67 on python file
-    {
+    for (i = 0; i < K; i++) { // allocate an initial memory for every cluster members array
+        clusters[i]->members = (Data) calloc(1, sizeof(double));
+        if (clusters[i]->members == NULL)
+        {
+            printf("\nAn Error Has Occurred\n");
+            exit(0);
+        }
+    }
+    while (iterations > 0 && !valid) { // line 67 on python file
         valid = 1;
         int i, index;
         int *cluster_members_counter = (int *) calloc(K, sizeof(int)); // allocate memory for the c_m_c array
@@ -272,12 +283,13 @@ int main(int argc, char *argv[]) {
         }
         set_cluster_members_counters(clusters, matrix, cluster_members_counter, cluster_members_counter_copy);
         allocate_memory_for_cluster_members(clusters, cluster_members_counter);
-        for (i = 0; i < N; i++) // for each vector given in input
+        for (i = 0; i < N; i++) // for each vector in the given in input
         {
             index = find_cluster(clusters, matrix[i]); // find the vector's cluster
             add_to_cluster(clusters, cluster_members_counter_copy, index, matrix[i]);
         }
         free(cluster_members_counter_copy);
+        Data old_centroid;
         for (i = 0; i < K; i++) {
             Data new_centroid = calc_centroid(clusters, cluster_members_counter, i);
             if (valid) {
@@ -286,13 +298,13 @@ int main(int argc, char *argv[]) {
                     valid = 0;
                 }
             }
+            free(clusters[i]->centroid);
             clusters[i]->centroid = new_centroid;
             free(clusters[i]->members);
         }
         free(cluster_members_counter);
         iterations--;
     }
-    //int i;
     for (i = 0; i < K; i++) // for every cluster
     {
         int j;
@@ -301,4 +313,14 @@ int main(int argc, char *argv[]) {
         }
         printf("\n");
     }
+
+    for (i = 0; i < K; i++) {
+        free(clusters[i]);
+    }
+    free(clusters);
+
+    /*for (i = 0; i < N; i++) {
+        free(matrix[i]);
+    }
+    free(matrix); */
 }
